@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'github_service.dart';
 import 'capture_screen.dart';
 
@@ -13,24 +14,50 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   // CONFIGURATION GITHUB
-  final String _githubToken = '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'; 
+  String? _githubToken; 
   final String _owner = 'saboiteau';
   final String _repo = 'mon-assistant-v3-mobile';
 
-  late GitHubService _githubService;
+  GitHubService? _githubService;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _githubService = GitHubService(
-      token: _githubToken,
-      owner: _owner,
-      repo: _repo,
-    );
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _githubToken = prefs.getString('github_token');
+      if (_githubToken != null) {
+        _githubService = GitHubService(
+          token: _githubToken!,
+          owner: _owner,
+          repo: _repo,
+        );
+      }
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('github_token', token);
+    _loadSettings();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_githubToken == null) {
+      return _buildSetupUI();
+    }
+
     return Scaffold(
       body: Material(
         color: Colors.transparent,
@@ -197,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CaptureScreen(githubService: _githubService),
+              builder: (context) => CaptureScreen(githubService: _githubService!),
             ),
           );
         },
@@ -392,27 +419,95 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildOrangeButton(String text, IconData icon) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF8C42),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF8C42).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+  Widget _buildSetupUI() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF020617),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.security, size: 80, color: Color(0xFF135BEC)),
+              const SizedBox(height: 32),
+              const Text(
+                'Configuration Souveraine',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Entrez votre Token GitHub (PAT) pour activer la capture mobile.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54),
+              ),
+              const SizedBox(height: 40),
+              _buildOrangeButton('Configurer le Token', Icons.key),
+            ],
           ),
-        ],
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          Icon(icon, size: 18),
+    );
+  }
+
+  // Modification pour rendre le bouton cliquable dans le setup
+  Widget _buildOrangeButton(String text, IconData icon) {
+    return InkWell(
+      onTap: _githubToken == null ? () => _showTokenDialog() : null,
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF8C42),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF8C42).withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            Icon(icon, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTokenDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        title: const Text('GitHub PAT'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'ghp_...',
+            hintStyle: TextStyle(color: Colors.white24),
+          ),
+          style: const TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                _saveToken(controller.text);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Enregistrer'),
+          ),
         ],
       ),
     );
