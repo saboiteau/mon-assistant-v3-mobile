@@ -13,7 +13,7 @@ git add .
 
 echo.
 echo 3. Commit (au cas ou)...
-git commit -m "🚀 Force Deploy: Fix mobile app display"
+git commit -m "Force Deploy: Upgrade Flutter to stable"
 
 echo.
 echo 4. Envoi vers GitHub (Push)...
