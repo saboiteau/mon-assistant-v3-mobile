@@ -13,10 +13,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // CONFIGURATION GITHUB
+  // CONFIGURATION GITHUB - Pointe vers le repo principal unifié
   String? _githubToken; 
   final String _owner = 'saboiteau';
-  final String _repo = 'mon-assistant-v3-mobile';
+  final String _repo = 'MonAssistantIAv2';  // Repo principal pour workflow unifié
 
   GitHubService? _githubService;
   bool _isLoading = true;
