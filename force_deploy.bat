@@ -13,7 +13,7 @@ git add .
 
 echo.
 echo 3. Commit (au cas ou)...
-git commit -m "Force Deploy: Upgrade Flutter to stable"
+git commit -m "Fix: Remove web-renderer flag (CI fix)"
 
 echo.
 echo 4. Envoi vers GitHub (Push)...
