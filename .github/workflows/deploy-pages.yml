@@ -27,11 +27,13 @@ jobs:
           flutter-version: '3.19.0'
           channel: 'stable'
       
-      - name: Get dependencies
-        run: flutter pub get
+      - name: Clean and Get dependencies
+        run: |
+          flutter clean
+          flutter pub get
       
       - name: Build web
-        run: flutter build web --release --base-href "/mon-assistant-v3-mobile/"
+        run: flutter build web --release --web-renderer html
       
       - name: Setup Pages
         uses: actions/configure-pages@v4

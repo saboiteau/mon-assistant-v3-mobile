@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'models/fiche.dart';
 
 /// Service GitHub unifié pour écrire dans le repo principal MonAssistantIAv2
 /// Supporte deux types de capture :
@@ -126,6 +127,89 @@ class GitHubService {
     } catch (e) {
       print('GitHub Service Error: $e');
       return false;
+    }
+  }
+
+  /// Récupère la liste des fiches de veille (recursive)
+  /// Utilise l'API Git Tree pour être plus efficace
+  Future<List<Fiche>> fetchFiches() async {
+    try {
+      // 1. Récupérer le SHA de la branche main
+      final branchResponse = await http.get(
+        Uri.parse('https://api.github.com/repos/$owner/$repo/branches/main'),
+        headers: {
+          'Authorization': 'token $token',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+
+      if (branchResponse.statusCode != 200) {
+        print('Error fetching branch: ${branchResponse.body}');
+        return [];
+      }
+
+      final branchData = json.decode(branchResponse.body);
+      final treeSha = branchData['commit']['commit']['tree']['sha'];
+
+      // 2. Récupérer l'arbre complet récursivement
+      final treeResponse = await http.get(
+        Uri.parse('https://api.github.com/repos/$owner/$repo/git/trees/$treeSha?recursive=1'),
+        headers: {
+          'Authorization': 'token $token',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+
+      if (treeResponse.statusCode != 200) {
+         print('Error fetching tree: ${treeResponse.body}');
+         return [];
+      }
+
+      final treeData = json.decode(treeResponse.body);
+      final List<dynamic> tree = treeData['tree'];
+
+      // 3. Filtrer pour ne garder que les fichiers .md dans data/veille/fiches/
+      final fiches = tree.where((node) {
+        final path = node['path'] as String;
+        return path.startsWith('data/veille/fiches/') && path.endsWith('.md');
+      }).map((node) {
+        return Fiche(
+          name: node['path'].split('/').last, 
+          path: node['path'], 
+          sha: node['sha']
+        );
+      }).toList();
+
+      // Trier par path desc (plus récent en haut)
+      fiches.sort((a, b) => b.path.compareTo(a.path));
+
+      return fiches;
+
+    } catch (e) {
+      print('GitHub Fetch Error: $e');
+      return [];
+    }
+  }
+
+  /// Récupère le contenu brut d'un fichier
+  Future<String> fetchFileContent(String path) async {
+    try {
+      final url = Uri.parse('https://api.github.com/repos/$owner/$repo/contents/$path');
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'token $token',
+          'Accept': 'application/vnd.github.v3.raw', // Header pour raw content
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return utf8.decode(response.bodyBytes);
+      } else {
+        return 'Erreur chargement: ${response.statusCode}';
+      }
+    } catch (e) {
+      return 'Erreur réseau: $e';
     }
   }
 }

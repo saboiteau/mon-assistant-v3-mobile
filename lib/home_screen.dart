@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'github_service.dart';
 import 'capture_screen.dart';
+import 'models/fiche.dart';
+import 'screens/fiche_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -535,65 +537,108 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
-                  ),
-                  child: const Text(
-                    '3 NOUVEAUX',
-                    style: TextStyle(fontSize: 10, color: Colors.white38),
-                  ),
-                ),
+                // Le compteur sera dynamique plus tard, ou on peut afficher le nombre total
               ],
             ),
             const SizedBox(height: 24),
-            _buildVeilleItem('Régulation IA Act : Impact direct', 'Lu il y a 5 min'),
-            const Divider(height: 32, color: Colors.white10),
-            _buildVeilleItem('Apple Vision Pro 2 : Rumeurs', 'Hier à 18h42'),
-            const Divider(height: 32, color: Colors.white10),
-            _buildVeilleItem('Shift stratégique du marché', 'Il y a 2 jours'),
+            
+            // LISTE DYNAMIQUE DES FICHES
+            FutureBuilder<List<Fiche>>(
+              future: _githubService?.fetchFiches(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: SizedBox(
+                      height: 20, 
+                      width: 20, 
+                      child: CircularProgressIndicator(strokeWidth: 2)
+                    )
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red, fontSize: 12));
+                }
+
+                final fiches = snapshot.data ?? [];
+                
+                if (fiches.isEmpty) {
+                  return Text(
+                    'Aucune fiche trouvée',
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                  );
+                }
+
+                // Afficher les 3 premières fiches
+                final limitedFiches = fiches.take(3).toList();
+
+                return Column(
+                  children: [
+                    for (int i = 0; i < limitedFiches.length; i++) ...[
+                      _buildVeilleItem(limitedFiches[i]),
+                      if (i < limitedFiches.length - 1)
+                        const Divider(height: 32, color: Colors.white10),
+                    ]
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildVeilleItem(String title, String subtitle) {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+  Widget _buildVeilleItem(Fiche fiche) {
+    // Nettoyage du nom pour l'affichage (enlève .md et les préfixes potentiels)
+    final displayName = fiche.name.replaceAll('.md', '').replaceAll(RegExp(r'^\d{4}-\d{2}-\d{2}-'), '');
+    final dateStr = fiche.name.contains('202') ? fiche.name.substring(0, 10) : 'Récemment';
+
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FicheDetailScreen(
+              fiche: fiche, 
+              githubService: _githubService!,
+            ),
           ),
-          child: const Icon(Icons.article_outlined, size: 20, color: Colors.white38),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.3)),
-              ),
-            ],
+        );
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: const Icon(Icons.article_outlined, size: 20, color: Colors.white38),
           ),
-        ),
-        const Icon(Icons.chevron_right, color: Colors.white10),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateStr,
+                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.3)),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: Colors.white10),
+        ],
+      ),
     );
   }
 
