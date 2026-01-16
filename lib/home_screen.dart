@@ -499,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: Colors.white54),
               ),
               const SizedBox(height: 40),
-              _buildOrangeButton('Configurer le Token', Icons.key),
+              _buildOrangeButton('Configurer le Token', Icons.key, null),
             ],
           ),
         ),
@@ -738,52 +738,57 @@ class _HomeScreenState extends State<HomeScreen> {
     return InkWell(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Agent $role : ${isActive ? "Prêt à vous aider." : "En veille."}')),
+          SnackBar(
+              content: Text(
+                  'Agent $role : ${isActive ? "Prêt à vous aider." : "En veille."}')),
         );
       },
       child: GlassCard(
-      width: 160,
-      height: 70,
-      borderRadius: 20,
-      borderColor: Colors.white.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isActive ? const Color(0xFF135BEC) : Colors.white24,
-                boxShadow: isActive ? [
-                  BoxShadow(
-                    color: const Color(0xFF135BEC).withOpacity(0.6),
-                    blurRadius: 12,
-                  )
-                ] : null,
+        width: 160,
+        height: 70,
+        borderRadius: 20,
+        borderColor: Colors.white.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isActive ? const Color(0xFF135BEC) : Colors.white24,
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF135BEC).withOpacity(0.6),
+                            blurRadius: 12,
+                          )
+                        ]
+                      : null,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  status.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white.withOpacity(0.3),
-                    letterSpacing: -0.2,
+              const SizedBox(width: 12),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    role,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white.withOpacity(0.3),
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
