@@ -178,8 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
+                Text(
                   'Bonjour Sandrine',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.5,
@@ -187,13 +188,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 // Feature "Logout" cachée/discrète pour changer le token
                 Positioned(
-                    right: -30,
-                    top: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.logout, size: 16, color: Colors.white30),
-                      onPressed: _resetToken,
-                      tooltip: 'Changer de Token',
-                    ))
+                  right: -30,
+                  top: 0,
+                  child: IconButton(
+                    icon: const Icon(Icons.logout, size: 16, color: Colors.white30),
+                    onPressed: _resetToken,
+                    tooltip: 'Changer de Token',
+                  ),
+                ),
                 Positioned(
                   bottom: -2,
                   left: 0,
