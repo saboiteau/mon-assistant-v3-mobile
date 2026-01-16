@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'github_service.dart';
 import 'capture_screen.dart';
 import 'models/fiche.dart';
@@ -463,7 +464,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _buildOrangeButton('Lancer la discussion', Icons.bolt),
+                _buildOrangeButton('Lancer la discussion', Icons.bolt, () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Sparring Partner en cours de connexion (V3)...')),
+                  );
+                }),
               ],
             ),
           ),
@@ -503,9 +508,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Modification pour rendre le bouton cliquable dans le setup
-  Widget _buildOrangeButton(String text, IconData icon) {
+  Widget _buildOrangeButton(String text, IconData icon, VoidCallback? onTap) {
     return InkWell(
-      onTap: _githubToken == null ? () => _showTokenDialog() : null,
+      onTap: onTap ?? (_githubToken == null ? () => _showTokenDialog() : null),
       child: Container(
         width: double.infinity,
         height: 56,
@@ -620,8 +625,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                // Afficher les 3 premières fiches
-                final limitedFiches = fiches.take(3).toList();
+                // Afficher les 10 premières fiches
+                final limitedFiches = fiches.take(10).toList();
 
                 return Column(
                   children: [
@@ -730,7 +735,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAgentCard(String role, String status, bool isActive) {
-    return GlassCard(
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Agent $role : ${isActive ? "Prêt à vous aider." : "En veille."}')),
+        );
+      },
+      child: GlassCard(
       width: 160,
       height: 70,
       borderRadius: 20,
@@ -868,9 +879,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     return SingleChildScrollView(
                       controller: scrollController,
-                      child: Text(
-                        snapshot.data ?? 'Index vide.',
-                        style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 40),
+                        child: MarkdownBody(
+                          data: snapshot.data ?? 'Index vide.',
+                          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                            p: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
+                            h1: const TextStyle(color: Color(0xFF135BEC), fontSize: 22, fontWeight: FontWeight.bold),
+                            h2: const TextStyle(color: Color(0xFF135BEC), fontSize: 18, fontWeight: FontWeight.bold),
+                            h3: const TextStyle(color: Color(0xFFFF8C42), fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ),
                     );
                   },
