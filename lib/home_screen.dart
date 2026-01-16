@@ -22,6 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   GitHubService? _githubService;
   bool _isLoading = true;
+  int _pendingUrlsCount = 0;
+  int _fichesThisMonthCount = 0;
 
   @override
   void initState() {
@@ -39,15 +41,54 @@ class _HomeScreenState extends State<HomeScreen> {
           owner: _owner,
           repo: _repo,
         );
+        _fetchStats();
       }
       _isLoading = false;
     });
+  }
+
+  Future<void> _fetchStats() async {
+    if (_githubService == null) return;
+    try {
+      final fiches = await _githubService!.fetchFiches();
+      final now = DateTime.now();
+      final monthStr = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      
+      final thisMonth = fiches.where((f) => f.path.contains(monthStr)).length;
+      
+      // Fetch urls-to-process.txt to count pending items
+      final urlsContent = await _githubService!.fetchFileContent('urls-to-process.txt');
+      final pendingCount = urlsContent.split('\n').where((l) => l.trim().isNotEmpty && !l.startsWith('#') && !l.contains('TRAITÉES')).length;
+
+      setState(() {
+        _fichesThisMonthCount = thisMonth;
+        _pendingUrlsCount = pendingCount;
+      });
+    } catch (e) {
+      print('Error fetching stats: $e');
+    }
+  }
+
+  double get _fluxIntensity {
+    if (_fichesThisMonthCount == 0 && _pendingUrlsCount == 0) return 0.5;
+    // Calculation: ratio of pending vs processed (clamped to 0.1 - 0.9 range for the bar)
+    double ratio = _pendingUrlsCount / (_fichesThisMonthCount + 5); 
+    return (0.1 + (ratio * 0.8)).clamp(0.1, 0.9);
   }
 
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('github_token', token);
     _loadSettings();
+  }
+
+  Future<void> _resetToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('github_token');
+    setState(() {
+      _githubToken = null;
+      _githubService = null;
+    });
   }
 
   @override
@@ -137,7 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                const Text(
                   'Bonjour Sandrine',
                   style: TextStyle(
                     fontSize: 28,
@@ -145,6 +185,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     letterSpacing: -0.5,
                   ),
                 ),
+                // Feature "Logout" cachée/discrète pour changer le token
+                Positioned(
+                    right: -30,
+                    top: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.logout, size: 16, color: Colors.white30),
+                      onPressed: _resetToken,
+                      tooltip: 'Changer de Token',
+                    ))
                 Positioned(
                   bottom: -2,
                   left: 0,
@@ -313,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
-                widthFactor: 0.65,
+                widthFactor: _fluxIntensity,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
@@ -740,10 +789,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(Icons.grid_view, 'Home', true),
-              _buildNavItem(Icons.chat_bubble_outline, 'Chat', false),
-              _buildNavItem(Icons.auto_awesome_outlined, 'Briefs', false),
-              _buildNavItem(Icons.settings_outlined, 'Réglages', false),
+              _buildNavItem(Icons.grid_view, 'Home', true, () {}),
+              _buildNavItem(Icons.chat_bubble_outline, 'Chat', false, () {
+                // Future: Sparring Partner
+              }),
+              _buildNavItem(Icons.auto_awesome_outlined, 'Briefs', false, () {
+                _showBriefs();
+              }),
+              _buildNavItem(Icons.settings_outlined, 'Réglages', false, () {
+                _showTokenDialog();
+              }),
             ],
           ),
         ),
@@ -751,25 +806,78 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          color: isActive ? const Color(0xFF135BEC) : Colors.white.withOpacity(0.3),
-          size: 24,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
+  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
             color: isActive ? const Color(0xFF135BEC) : Colors.white.withOpacity(0.3),
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isActive ? const Color(0xFF135BEC) : Colors.white.withOpacity(0.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBriefs() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F172A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Briefs & Index',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: FutureBuilder<String>(
+                  future: _githubService!.fetchFileContent('data/veille/index.md'),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Erreur: ${snapshot.error}'));
+                    }
+                    return SingleChildScrollView(
+                      controller: scrollController,
+                      child: Text(
+                        snapshot.data ?? 'Index vide.',
+                        style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
